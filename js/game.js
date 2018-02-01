@@ -58,7 +58,7 @@ var h1 = function(state, goal) {
         return ans;
     }
     let sum = 0;
-    for (let i = 0; i < 9; i++) {
+    for (let i = 1; i < 9; i++) {
         sum += manhattenDistance(i, state, goal);
     }
     return sum;
@@ -161,9 +161,10 @@ var checkGoal = function(state) {
 //                  return SOLUTION(child)
 //                  frontier ←INSERT(child,frontier)
 
-var Node = function(parent, state) {
+var Node = function(parent, state, pathCost) {
     this.parent = parent;
     this. state = state;
+    this.pathCost = pathCost;
 }
 
 var solve = async function(state) {
@@ -184,6 +185,56 @@ var solve = async function(state) {
         for(let i = 0; i < as.length; i++) {
             action = as[i];
             let child = new Node(node, nextState(node.state, action.x, action.y, action.direction));
+            if (!(JSON.stringify(child.state) in explored) && !(JSON.stringify(child.state) in frontierHashSet)) {
+                if (checkGoal(child.state)) {
+                    solution(child);
+                    return;
+                }
+                frontier.push(child);
+                frontierHashSet[JSON.stringify(node.state)] = 1;
+            }
+        }
+    }
+}
+
+/*
+function UNIFORM-COST-SEARCH(problem) returns a solution, or failure
+    node ← a node with STATE = problem.INITIAL-STATE, PATH-COST = 0
+    frontier ← a priority queue ordered by PATH-COST, with node as the only element explored ← an empty set
+    loop do
+        if EMPTY?(frontier) then return failure
+        node←POP(frontier) 
+        if problem.GOAL-TEST(node.STATE) then 
+            return SOLUTION(node) 
+        add node.STATE to explored
+        for each action in problem.ACTIONS(node.STATE) do
+            child ←CHILD-NODE(problem,node,action)
+            if child.STATE is not in explored or frontier then
+                frontier ←INSERT(child,frontier)
+            else if child.STATE is in frontier with higher PATH-COST then
+                replace that frontier node with child
+*/
+
+var solveAStar = function(state) {
+    document.getElementById("solve-button").disabled = true;
+    document.getElementById("shuffle-button").disabled = true;
+    var node = new Node(null, state, 0);
+    if (checkGoal(node.state)) solution(node);
+    let frontier = new TinyQueue([node], function (a, b) {
+        return a.pathCost + h1(a.state, goal) - b.pathCost - h1(b.state, goal);
+    });
+    var frontierHashSet ={};
+    frontierHashSet[JSON.stringify(node.state)] = 1;
+    var explored = {};
+    while (frontier.length != 0) {
+        if (frontier.length == 0) return;
+        node = frontier.pop();
+        delete frontierHashSet[JSON.stringify(node.state)];
+        explored[JSON.stringify(node.state)] = 1;
+        as = actions(node.state);
+        for(let i = 0; i < as.length; i++) {
+            action = as[i];
+            let child = new Node(node, nextState(node.state, action.x, action.y, action.direction), node.pathCost + 1);
             if (!(JSON.stringify(child.state) in explored) && !(JSON.stringify(child.state) in frontierHashSet)) {
                 if (checkGoal(child.state)) {
                     solution(child);
@@ -245,3 +296,4 @@ let tiles = createTiles();
 draw(state, tiles);
 
 canvas.addEventListener('mousedown', clicked, false);
+
